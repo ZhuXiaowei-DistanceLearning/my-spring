@@ -3,9 +3,15 @@ package org.smart4j.framework.beans.factory.support;
 import org.smart4j.framework.beans.factory.BeanFactory;
 import org.smart4j.framework.beans.factory.config.BeanDefinition;
 import org.smart4j.framework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.smart4j.framework.helper.ClassHelper;
+import org.smart4j.framework.utils.ClassUtils;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * {org.springframework.beans.factory.ListableBeanFactory}和{BeanDefinitionRegistry}接口的默认实现：
@@ -17,6 +23,34 @@ import java.util.Map;
  * 有关替代实现{org.springframework.beans.factory.ListableBeanFactory}接口，查看{StaticListableBeanFactory}，它管理现有的bean实例，而不是根据bean定义创建新的实例。
  */
 public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFactory implements BeanDefinitionRegistry, ConfigurableListableBeanFactory {
+    // bean定义对象的映射，由bean名称键入
+    private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+
+    // 单例和非单例bean名称的映射，由依赖类型键入
+    private final Map<Class<?>, String[]> allBeanNamesByType = new ConcurrentHashMap<>();
+
+    // 注册顺序中的bean定义名称列表
+    private volatile List<String> beanDefinitionNames = new ArrayList<>();
+
+    // 从依赖类型映射到相应的自动装配值
+    private final Map<Class<?>, Object> resolvableDependencies = new ConcurrentHashMap<>(16);
+
+    public DefaultListableBeanFactory() {
+        super();
+    }
+
+    public DefaultListableBeanFactory(BeanFactory parentBeanFactory) {
+        super(parentBeanFactory);
+    }
+
+    /**
+     * 默认注入bean方法
+     */
+    public void registerBean(){
+//        Set<Class<?>> classes = ClassHelper.getComponentClass();
+        Set<Class<?>> configurationClass = ClassHelper.getConfigurationClass();
+        Set<Class<?>> scanClass = ClassHelper.getScanClass();
+    }
     @Override
     public <T> T getBean(Class<T> requiredType) {
         return super.getBean(requiredType);
@@ -69,6 +103,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
     }
 
     @Override
+    /**
+     * 注入Bean
+     */
     public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
 
     }
@@ -79,14 +116,29 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
     }
 
     @Override
+    /**
+     * 继承父工厂抽象方法
+     */
     public BeanDefinition getBeanDefinition(String beanName) {
         return null;
     }
 
     @Override
+    /**
+     * 继承父工厂抽象方法
+     */
+    protected Object createBean(String beanName, Object object) {
+        return null;
+    }
+
+    @Override
+    /**
+     * 继承父工厂抽象方法
+     */
     public boolean containsBeanDefinition(String beanName) {
         return false;
     }
+
 
     @Override
     public String[] getBeanDefinitionNames() {
@@ -95,7 +147,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
     @Override
     public int getBeanDefinitionCount() {
-        return 0;
+        return this.beanDefinitionMap.size();
     }
 
     @Override

@@ -1,6 +1,6 @@
 package org.smart4j.framework.beans.factory;
 
-import com.sun.istack.internal.Nullable;
+
 
 /**
  *用于访问Spring bean容器的根接口。
@@ -24,7 +24,7 @@ public interface BeanFactory {
 
     Object getBean(String name);
 
-    <T> T getBean(String name, @Nullable Class<T> requiredType);
+    <T> T getBean(String name, Class<T> requiredType);
 
     Object getBean(String name, Object... args);
 
@@ -39,7 +39,6 @@ public interface BeanFactory {
 
     boolean isPrototype(String name);
 
-    @Nullable
     Class<?> getType(String name);
 
     String[] getAliases(String name);

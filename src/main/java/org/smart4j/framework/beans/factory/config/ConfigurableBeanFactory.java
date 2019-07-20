@@ -1,7 +1,5 @@
 package org.smart4j.framework.beans.factory.config;
 
-import com.sun.istack.internal.Nullable;
-import org.smart4j.framework.beans.factory.BeanFactory;
 import org.smart4j.framework.beans.factory.HierarchicalBeanFactory;
 
 /**
