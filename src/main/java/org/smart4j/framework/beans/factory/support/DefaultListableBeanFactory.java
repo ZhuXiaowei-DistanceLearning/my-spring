@@ -1,16 +1,23 @@
 package org.smart4j.framework.beans.factory.support;
 
+import org.aopalliance.interceptor.MethodInterceptor;
+import org.smart4j.framework.aop.aspect.ProxyManager;
 import org.smart4j.framework.beans.factory.BeanFactory;
+import org.smart4j.framework.beans.factory.annotation.Autowire;
 import org.smart4j.framework.beans.factory.config.BeanDefinition;
 import org.smart4j.framework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.smart4j.framework.context.annotation.Bean;
+import org.smart4j.framework.context.annotation.Configuration;
+import org.smart4j.framework.helper.AopHelper;
 import org.smart4j.framework.helper.ClassHelper;
-import org.smart4j.framework.utils.ClassUtils;
+import org.smart4j.framework.stereotype.Component;
+import org.smart4j.framework.utils.ReflectionUtils;
+import org.smart4j.framework.utils.StringUtil;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -24,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFactory implements BeanDefinitionRegistry, ConfigurableListableBeanFactory {
     // bean定义对象的映射，由bean名称键入
-    private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+    private final Map<String, Object> beanDefinitionMap = new ConcurrentHashMap<>();
 
     // 单例和非单例bean名称的映射，由依赖类型键入
     private final Map<Class<?>, String[]> allBeanNamesByType = new ConcurrentHashMap<>();
@@ -45,20 +52,187 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
     /**
      * 默认注入bean方法
+     * 需要配合包扫描才能使用注解
      */
-    public void registerBean(){
-//        Set<Class<?>> classes = ClassHelper.getComponentClass();
-        Set<Class<?>> configurationClass = ClassHelper.getConfigurationClass();
-        Set<Class<?>> scanClass = ClassHelper.getScanClass();
+    public void registerBean() {
+        // 获取所有component下的类
+        Map<Class<?>, Object> scamMap = initResolverMap();
+        // 初始化解析所有Component注解类
+        resolverComponentClass(scamMap);
+        // 注入所有Autowire注解类
+        resolverAutowire(resolvableDependencies);
+        // 注入所有Bean注解
+        resolverBean(scamMap);
+        // 注入Aspect注解类，Aop实现
+        resolverAop();
+        System.out.println(resolvableDependencies);
     }
+
+    /**
+     * AOP注入
+     *
+     * @throws Exception
+     */
+    private void resolverAop() {
+        try {
+            Map<Class<?>, Set<Class<?>>> proxyMap = null;
+            proxyMap = AopHelper.createProxyMap();
+            Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createTargetMap(proxyMap);
+            for (Map.Entry<Class<?>, List<MethodInterceptor>> map : targetMap.entrySet()) {
+                Class<?> targetClass = map.getKey();
+                List<MethodInterceptor> proxyList = map.getValue();
+                Object proxy = ProxyManager.createProxy(targetClass, proxyList);
+                resolvableDependencies.put(targetClass, proxy);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void resolverBean(Map<Class<?>, Object> scanMap) {
+        for (Map.Entry<Class<?>, Object> map : scanMap.entrySet()) {
+            Class<?> key = map.getKey();
+            Object value = map.getValue();
+            Annotation[] annotations = key.getAnnotations();
+            for (Annotation annotation : annotations) {
+                boolean annotationPresent = annotation.annotationType().isAnnotationPresent(Component.class);
+                if (annotationPresent) {
+                    Method[] methods = key.getDeclaredMethods();
+                    for (Method method : methods) {
+                        if (method.isAnnotationPresent(Bean.class)) {
+                            Object bean = getBean(StringUtil.TransferClassName(method.getName()));
+                            if (bean == null) {
+                                // 得到方法的结果,进行注入
+                                Object result = ReflectionUtils.invokeMethod(value, method);
+                                beanDefinitionMap.put(StringUtil.TransferClassName(method.getName()), result);
+                            }
+                        }
+                    }
+                }
+            }
+            if (key.isAnnotationPresent(Configuration.class) || key.isAnnotationPresent(Component.class)) {
+                Method[] methods = key.getDeclaredMethods();
+                for (Method method : methods) {
+                    if (method.isAnnotationPresent(Bean.class)) {
+                        Object bean = getBean(StringUtil.TransferClassName(method.getName()));
+                        if (bean == null) {
+                            // 得到方法的结果,进行注入
+                            Object result = ReflectionUtils.invokeMethod(value, method);
+                            beanDefinitionMap.put(StringUtil.TransferClassName(method.getName()), result);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 解析所有Configuration配置类
+     * 注入配置类中的Bean方法
+     *
+     * @param scanMap
+     */
+    @Deprecated
+    private void resolverConfigurationBean(Map<Class<?>, Object> scanMap) {
+        for (Map.Entry<Class<?>, Object> map : scanMap.entrySet()) {
+            Class<?> key = map.getKey();
+            Object value = map.getValue();
+            Annotation[] annotations = key.getAnnotations();
+            if (key.isAnnotationPresent(Configuration.class) || key.isAnnotationPresent(Component.class)) {
+                Method[] methods = key.getDeclaredMethods();
+                for (Method method : methods) {
+                    if (method.isAnnotationPresent(Bean.class)) {
+                        Object bean = getBean(StringUtil.TransferClassName(method.getName()));
+                        if (bean == null) {
+                            // 得到方法的结果,进行注入
+                            Object result = ReflectionUtils.invokeMethod(value, method);
+                            beanDefinitionMap.put(StringUtil.TransferClassName(method.getName()), result);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 获取Component包下所有的类与对象映射关系
+     *
+     * @return
+     */
+    public Map<Class<?>, Object> initResolverMap() {
+        Map<Class<?>, Object> scanMap = new HashMap<>();
+        Set<Class<?>> scanClassSet = ClassHelper.getScanClassSet();
+        Set<Class<?>> scanClass = ClassHelper.getScanClass(scanClassSet);
+        for (Class<?> cls : scanClass) {
+            scanMap.put(cls, ReflectionUtils.newInstance(cls));
+        }
+        return scanMap;
+    }
+
+    /**
+     * 从component类下注入autowire
+     *
+     * @param scanMap
+     */
+    private void resolverAutowire(Map<Class<?>, Object> scanMap) {
+        // 将Autowire注解注入到beanDefinitionMap中
+        // 总beanDefinitionMap中注入到resolvableDependencies中
+        for (Map.Entry<Class<?>, Object> map : scanMap.entrySet()) {
+            // 实例类
+            Class<?> key = map.getKey();
+            // 实例对象
+            Object value = map.getValue();
+            Field[] fields = key.getDeclaredFields();
+            if (fields != null || fields.length != 0) {
+                for (Field field : fields) {
+                    if (field.isAnnotationPresent(Autowire.class)) {
+                        // 获取字段的返回值类型
+                        Class<?> type = field.getType();
+                        String fieldName = StringUtil.TransferClassName(field.getName());
+                        Object beanValue = getBean(fieldName);
+                        // 该值已经注入到容器中
+                        if (beanValue != null) {
+                            // 对该类中的Autowire字段进行值注入
+                            ReflectionUtils.setField(value, field, beanValue);
+                        } else {
+                            // 该值未注入到容器中,首先保存到beanMap中
+                            // 将该值注入
+                            beanDefinitionMap.put(fieldName, ReflectionUtils.newInstance(type));
+                            ReflectionUtils.setField(value, field, ReflectionUtils.newInstance(type));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 注入所有Component注解类
+     *
+     * @param scanMap
+     */
+    private void resolverComponentClass(Map<Class<?>, Object> scanMap) {
+        for (Map.Entry<Class<?>, Object> map : scanMap.entrySet()) {
+            Class<?> key = map.getKey();
+            Object value = map.getValue();
+            resolvableDependencies.put(key, value);
+        }
+    }
+
     @Override
     public <T> T getBean(Class<T> requiredType) {
-        return super.getBean(requiredType);
+        return (T) this.resolvableDependencies.get(requiredType);
     }
 
     @Override
     public Object getBean(String name, Object... args) {
         return super.getBean(name, args);
+    }
+
+    @Override
+    public Object getBean(String name) {
+        return this.beanDefinitionMap.get(name);
     }
 
     @Override
