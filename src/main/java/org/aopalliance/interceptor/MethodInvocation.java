@@ -1,8 +1,8 @@
 package org.aopalliance.interceptor;
 
-import java.lang.reflect.Method;
+import net.sf.cglib.proxy.MethodProxy;
 
 // 相当于proxyChain
 public interface MethodInvocation extends Invocation {
-    Method getMethod();
+    MethodProxy getMethod();
 }

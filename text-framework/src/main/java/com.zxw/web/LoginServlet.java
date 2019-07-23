@@ -3,6 +3,8 @@ package com.zxw.web;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,16 +34,16 @@ import org.smart4j.framework.stereotype.Controller;
 
 @Controller
 public class LoginServlet {
-//	UserService userService = new UserService();
-	Logger logger = new Logger(LoginServlet.class);
-//	private JwtProperties properties = new JwtProperties();
-	@Autowire
-	private UserService userService;
+//    	UserService userService = new UserService();
+    Logger logger = new Logger(LoginServlet.class);
+    //	private JwtProperties properties = new JwtProperties();
+    @Autowire
+    private UserService userService;
 
-	public static void main(String[] args) {
-		DefaultListableBeanFactory dl = new DefaultListableBeanFactory();
-		dl.registerBean();
-	}
+    public void register() {
+        userService.register();
+        System.out.println("用户注册");
+    }
 
 //	@Action("post:/login")
 //	public Data login(Param param) {

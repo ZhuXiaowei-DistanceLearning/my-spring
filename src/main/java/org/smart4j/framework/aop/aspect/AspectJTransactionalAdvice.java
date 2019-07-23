@@ -3,11 +3,11 @@ package org.smart4j.framework.aop.aspect;
 import org.aopalliance.interceptor.MethodInterceptor;
 import org.aopalliance.interceptor.MethodInvocation;
 
-public class AspectJAroundAdvice extends AbstractAspectJAdvice implements MethodInterceptor {
+public class AspectJTransactionalAdvice extends AbstractAspectJAdvice implements MethodInterceptor {
     @Override
     public Object invoke(MethodInvocation invocation) throws Throwable {
-        System.out.println("执行环绕通知");
-        return invokeAdviceMethod(invocation.getMethod(), invocation.getArguments(), invocation.getThis());
+        System.out.println("事务开启");
+        return invokeAdviceMethod(invocation.getMethod(),invocation.getArguments(),invocation.getThis());
     }
 
     @Override

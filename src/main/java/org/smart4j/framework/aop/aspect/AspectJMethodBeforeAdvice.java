@@ -1,5 +1,6 @@
 package org.smart4j.framework.aop.aspect;
 
+import net.sf.cglib.proxy.MethodProxy;
 import org.smart4j.framework.aop.MethodBeforeAdvice;
 
 import java.io.Serializable;
@@ -21,7 +22,7 @@ public class AspectJMethodBeforeAdvice extends AbstractAspectJAdvice implements 
     }
 
     @Override
-    public void before(Method method, Object[] args, Object target) throws Throwable {
+    public void before(MethodProxy method, Object[] args, Object target) throws Throwable {
         invokeAdviceMethod(method,args,target);
     }
 }

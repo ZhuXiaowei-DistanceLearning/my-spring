@@ -1,5 +1,6 @@
 package org.smart4j.framework.aop.aspect;
 
+import net.sf.cglib.proxy.MethodProxy;
 import org.aopalliance.aop.Advice.Advice;
 
 import java.io.Serializable;
@@ -12,11 +13,11 @@ import java.lang.reflect.Method;
 public abstract class AbstractAspectJAdvice implements Advice, AspectJPrecedenceInformation, Serializable {
     private String aspectName = "";
 
-    protected Object invokeAdviceMethod(Method method, Object[] args, Object target) {
+    protected Object invokeAdviceMethod(MethodProxy method, Object[] args, Object target) {
         Object invoke;
         try {
-            invoke = method.invoke(target, args);
-        } catch (Exception e) {
+            invoke = method.invokeSuper(target, args);
+        } catch (Throwable e) {
             throw new RuntimeException();
         }
         return invoke;

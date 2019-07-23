@@ -131,4 +131,20 @@ public final class ClassHelper {
             }
         }
     }
+
+    /**
+     * 获取应用包名下带有某注解的类
+     *
+     * @param cls
+     * @return
+     */
+    public static Set<Class<?>> getClassSetByAnnotation(Class<? extends Annotation> cls) {
+        Set<Class<?>> classSet = new HashSet<>();
+        for (Class<?> aClass : SCAN_CLASS_SET) {
+            if (aClass.isAnnotationPresent(Service.class)) {
+                classSet.add(aClass);
+            }
+        }
+        return classSet;
+    }
 }

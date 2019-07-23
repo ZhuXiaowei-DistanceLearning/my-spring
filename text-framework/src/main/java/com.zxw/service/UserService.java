@@ -4,12 +4,20 @@ import com.zxw.auth.entity.UserInfo;
 import com.zxw.mapper.BaseMapper;
 import com.zxw.mapper.UserMapper;
 import com.zxw.pojo.User;
+import org.smart4j.framework.aop.annotation.Transactional;
+import org.smart4j.framework.beans.factory.annotation.Autowire;
 import org.smart4j.framework.stereotype.Service;
 
 @Service
 public class UserService {
-	UserMapper userMapper = new UserMapper();
+    @Autowire
+    UserMapper userMapper;
 
+    @Transactional
+    public String register() {
+        System.out.println("userService:注册成功");
+        return "";
+    }
 	/*public String login(String username, String password, JwtProperties properties) {
 		User user = userMapper.login(username, password);
 		UserInfo info = new UserInfo();
@@ -39,5 +47,5 @@ public class UserService {
 		User user = userMapper.selectById(String.valueOf(id));
 		return user;
 	}*/
-	
+
 }

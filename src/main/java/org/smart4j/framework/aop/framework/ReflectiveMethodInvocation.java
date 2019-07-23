@@ -36,12 +36,12 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation {
     }
 
     @Override
-    public Object proceeed() throws Throwable {
-        Object methodResult;
+    // TODO 现在的问题是，AspectJAroundAdvice没有执行
+    public Object proceed() throws Throwable {
+        Object methodResult = null;
+        // TODO 代理对象有问题
         if (proxyIndex < proxyList.size()) {
             methodResult = proxyList.get(proxyIndex++).invoke(this);
-        } else {
-            methodResult = methodProxy.invokeSuper(targetObject, methodParams);
         }
         return methodResult;
     }
@@ -77,17 +77,17 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation {
     }
 
     @Override
-    public Method getMethod() {
-        return null;
+    public MethodProxy getMethod() {
+        return this.methodProxy;
     }
 
     @Override
     public Object[] getArguments() {
-        return new Object[0];
+        return this.methodParams;
     }
 
     @Override
     public Object getThis() {
-        return null;
+        return this.targetObject;
     }
 }

@@ -1,7 +1,7 @@
 package org.aopalliance.interceptor;
 
 public interface Joinpoint {
-    Object proceeed() throws Throwable;
+    Object proceed() throws Throwable;
 
     Object getThis();
 }

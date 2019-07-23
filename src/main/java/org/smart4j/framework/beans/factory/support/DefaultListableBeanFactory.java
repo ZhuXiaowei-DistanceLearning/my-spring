@@ -1,6 +1,7 @@
 package org.smart4j.framework.beans.factory.support;
 
 import org.aopalliance.interceptor.MethodInterceptor;
+import org.smart4j.framework.aop.annotation.Aspect;
 import org.smart4j.framework.aop.aspect.ProxyManager;
 import org.smart4j.framework.beans.factory.BeanFactory;
 import org.smart4j.framework.beans.factory.annotation.Autowire;
@@ -11,6 +12,7 @@ import org.smart4j.framework.context.annotation.Configuration;
 import org.smart4j.framework.helper.AopHelper;
 import org.smart4j.framework.helper.ClassHelper;
 import org.smart4j.framework.stereotype.Component;
+import org.smart4j.framework.stereotype.Service;
 import org.smart4j.framework.utils.ReflectionUtils;
 import org.smart4j.framework.utils.StringUtil;
 
@@ -57,15 +59,36 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
     public void registerBean() {
         // 获取所有component下的类
         Map<Class<?>, Object> scamMap = initResolverMap();
+        // 注入Aspect注解类，Aop实现
+//        resolverAop();
+        resolverAspectAop();
         // 初始化解析所有Component注解类
         resolverComponentClass(scamMap);
         // 注入所有Autowire注解类
         resolverAutowire(resolvableDependencies);
         // 注入所有Bean注解
         resolverBean(scamMap);
-        // 注入Aspect注解类，Aop实现
-        resolverAop();
-        System.out.println(resolvableDependencies);
+    }
+
+    /**
+     * AOP注入
+     *
+     * @throws Exception
+     */
+    private void resolverAspectAop() {
+        try {
+            Map<Class<?>, Set<Class<?>>> proxyMap = null;
+            proxyMap = AopHelper.createProxyMap();
+            Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createAspectMap(proxyMap);
+            for (Map.Entry<Class<?>, List<MethodInterceptor>> map : targetMap.entrySet()) {
+                Class<?> targetClass = map.getKey();
+                List<MethodInterceptor> proxyList = map.getValue();
+                Object proxy = ProxyManager.createProxy(targetClass, proxyList);
+                resolvableDependencies.put(targetClass, proxy);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -77,13 +100,20 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
         try {
             Map<Class<?>, Set<Class<?>>> proxyMap = null;
             proxyMap = AopHelper.createProxyMap();
+//            Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createTargetMap(proxyMap);
             Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createTargetMap(proxyMap);
             for (Map.Entry<Class<?>, List<MethodInterceptor>> map : targetMap.entrySet()) {
                 Class<?> targetClass = map.getKey();
                 List<MethodInterceptor> proxyList = map.getValue();
+//                Object proxy = ProxyManager.createProxy(targetClass, proxyList);
+//                resolvableDependencies.put(targetClass, proxy);
+            }
+           /* for (Map.Entry<Class<?>, List<Object>> map : targetMap.entrySet()) {
+                Class<?> targetClass = map.getKey();
+                List<Object> proxyList = map.getValue();
                 Object proxy = ProxyManager.createProxy(targetClass, proxyList);
                 resolvableDependencies.put(targetClass, proxy);
-            }
+            }*/
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -189,17 +219,32 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
                     if (field.isAnnotationPresent(Autowire.class)) {
                         // 获取字段的返回值类型
                         Class<?> type = field.getType();
+                        Object bean = getBean(type);
                         String fieldName = StringUtil.TransferClassName(field.getName());
                         Object beanValue = getBean(fieldName);
                         // 该值已经注入到容器中
                         if (beanValue != null) {
+//                            Object bean = getBean(type);
+//                            if (bean != null) {
+                            // 已经生成代理对象
+                            if (bean == null) {
+                                ReflectionUtils.setField(value, field, ReflectionUtils.newInstance(type));
+                            } else {
+                                ReflectionUtils.setField(value, field, bean);
+                            }
+//                            }
                             // 对该类中的Autowire字段进行值注入
-                            ReflectionUtils.setField(value, field, beanValue);
                         } else {
                             // 该值未注入到容器中,首先保存到beanMap中
                             // 将该值注入
-                            beanDefinitionMap.put(fieldName, ReflectionUtils.newInstance(type));
-                            ReflectionUtils.setField(value, field, ReflectionUtils.newInstance(type));
+                            if (bean == null) {
+                                beanDefinitionMap.put(fieldName, ReflectionUtils.newInstance(type));
+                                ReflectionUtils.setField(value, field, ReflectionUtils.newInstance(type));
+
+                            } else {
+                                beanDefinitionMap.put(fieldName, bean);
+                                ReflectionUtils.setField(value, field, bean);
+                            }
                         }
                     }
                 }
@@ -216,7 +261,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
         for (Map.Entry<Class<?>, Object> map : scanMap.entrySet()) {
             Class<?> key = map.getKey();
             Object value = map.getValue();
-            resolvableDependencies.put(key, value);
+            if (getBean(key) == null) {
+                resolvableDependencies.put(key, value);
+            }
         }
     }
 

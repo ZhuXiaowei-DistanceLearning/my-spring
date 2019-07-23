@@ -1,6 +1,7 @@
 package com.zxw.aspect;
 
 import org.smart4j.framework.aop.annotation.After;
+import org.smart4j.framework.aop.annotation.Around;
 import org.smart4j.framework.aop.annotation.Aspect;
 import org.smart4j.framework.aop.annotation.Before;
 import org.smart4j.framework.aop.framework.ReflectiveMethodInvocation;
@@ -10,11 +11,12 @@ import org.smart4j.framework.stereotype.Component;
 @Component
 public class AspectProxy {
 
+    @Around
     public Object around(ReflectiveMethodInvocation rm) {
         before();
         Object proceeed = null;
         try {
-            proceeed = rm.proceeed();
+            proceeed = rm.proceed();
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
