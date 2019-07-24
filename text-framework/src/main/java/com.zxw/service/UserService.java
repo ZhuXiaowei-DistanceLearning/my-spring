@@ -15,6 +15,16 @@ public class UserService {
 
     @Transactional
     public String register() {
+        User user = new User();
+        user.setUsername("a");
+        user.setPassword("123");
+        user.setVersion(1);
+        user.setStatus(1);
+        user.setAge("1");
+        user.setBirthday("1");
+        user.setGender("1");
+        user.setRegion("1");
+        userMapper.insert(user);
         System.out.println("userService:注册成功");
         return "";
     }

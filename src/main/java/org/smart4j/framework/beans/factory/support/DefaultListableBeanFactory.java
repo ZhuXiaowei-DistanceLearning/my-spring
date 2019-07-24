@@ -2,6 +2,7 @@ package org.smart4j.framework.beans.factory.support;
 
 import org.aopalliance.interceptor.MethodInterceptor;
 import org.smart4j.framework.aop.annotation.Aspect;
+import org.smart4j.framework.aop.annotation.Transactional;
 import org.smart4j.framework.aop.aspect.ProxyManager;
 import org.smart4j.framework.beans.factory.BeanFactory;
 import org.smart4j.framework.beans.factory.annotation.Autowire;
@@ -79,11 +80,17 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
         try {
             Map<Class<?>, Set<Class<?>>> proxyMap = null;
             proxyMap = AopHelper.createProxyMap();
-            Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createAspectMap(proxyMap);
-            for (Map.Entry<Class<?>, List<MethodInterceptor>> map : targetMap.entrySet()) {
+            Map<Class<?>, List<Object>> targetMap = AopHelper.createAspectMap(proxyMap);
+            for (Map.Entry<Class<?>, List<Object>> map : targetMap.entrySet()) {
                 Class<?> targetClass = map.getKey();
-                List<MethodInterceptor> proxyList = map.getValue();
-                Object proxy = ProxyManager.createProxy(targetClass, proxyList);
+                List<Object> proxyList = map.getValue();
+                Method[] methods = targetClass.getDeclaredMethods();
+                Object proxy;
+                if (proxyList.get(0) instanceof MethodInterceptor) {
+                    proxy = ProxyManager.createProxy(targetClass, proxyList);
+                } else {
+                    proxy = ProxyManager.getProxy(targetClass, proxyList);
+                }
                 resolvableDependencies.put(targetClass, proxy);
             }
         } catch (Exception e) {
@@ -100,20 +107,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
         try {
             Map<Class<?>, Set<Class<?>>> proxyMap = null;
             proxyMap = AopHelper.createProxyMap();
-//            Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createTargetMap(proxyMap);
             Map<Class<?>, List<MethodInterceptor>> targetMap = AopHelper.createTargetMap(proxyMap);
             for (Map.Entry<Class<?>, List<MethodInterceptor>> map : targetMap.entrySet()) {
                 Class<?> targetClass = map.getKey();
                 List<MethodInterceptor> proxyList = map.getValue();
-//                Object proxy = ProxyManager.createProxy(targetClass, proxyList);
-//                resolvableDependencies.put(targetClass, proxy);
             }
-           /* for (Map.Entry<Class<?>, List<Object>> map : targetMap.entrySet()) {
-                Class<?> targetClass = map.getKey();
-                List<Object> proxyList = map.getValue();
-                Object proxy = ProxyManager.createProxy(targetClass, proxyList);
-                resolvableDependencies.put(targetClass, proxy);
-            }*/
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -125,6 +123,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
             Class<?> key = map.getKey();
             Object value = map.getValue();
             Annotation[] annotations = key.getAnnotations();
+            // 判断该类的注解上是否标注了Component注解
             for (Annotation annotation : annotations) {
                 boolean annotationPresent = annotation.annotationType().isAnnotationPresent(Component.class);
                 if (annotationPresent) {
@@ -141,6 +140,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
                     }
                 }
             }
+            // 获取Configuration注解和Component注解类,对于该两个类下的@Bean方法值进行注入
             if (key.isAnnotationPresent(Configuration.class) || key.isAnnotationPresent(Component.class)) {
                 Method[] methods = key.getDeclaredMethods();
                 for (Method method : methods) {
@@ -169,7 +169,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
             Class<?> key = map.getKey();
             Object value = map.getValue();
             Annotation[] annotations = key.getAnnotations();
-            if (key.isAnnotationPresent(Configuration.class) || key.isAnnotationPresent(Component.class)) {
+            /*if (key.isAnnotationPresent(Configuration.class) || key.isAnnotationPresent(Component.class)) {
                 Method[] methods = key.getDeclaredMethods();
                 for (Method method : methods) {
                     if (method.isAnnotationPresent(Bean.class)) {
@@ -181,7 +181,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
                         }
                     }
                 }
-            }
+            }*/
         }
     }
 

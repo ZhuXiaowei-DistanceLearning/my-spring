@@ -5,9 +5,9 @@ import org.smart4j.framework.aop.annotation.Aspect;
 import org.smart4j.framework.aop.annotation.Transactional;
 import org.smart4j.framework.aop.aspect.AspectJAroundAdvice;
 import org.smart4j.framework.aop.aspect.AspectJTransactionalAdvice;
-import org.smart4j.framework.aop.framework.ReflectiveMethodInvocation;
 import org.smart4j.framework.stereotype.Service;
 import org.smart4j.framework.utils.ClassUtils;
+import org.smart4j.framework.utils.ReflectionUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -79,48 +79,39 @@ public final class AopHelper {
     /**
      * 创建目标类和@Aspect注解代理对象之间的映射关系
      */
-    public static <T> Map<Class<?>, List<MethodInterceptor>> createAspectMap(Map<Class<?>, Set<Class<?>>> proxyMap) {
-        Map<Class<?>, List<MethodInterceptor>> targetMap = new HashMap<>();
+    public static <T> Map<Class<?>, List<Object>> createAspectMap(Map<Class<?>, Set<Class<?>>> proxyMap) {
+        Map<Class<?>, List<Object>> targetMap = new HashMap<>();
         for (Map.Entry<Class<?>, Set<Class<?>>> map : proxyMap.entrySet()) {
             // 代理类
             Class<?> key = map.getKey();
             // 目标类集合
             Set<Class<?>> targetClassSet = map.getValue();
             for (Class<?> targetClass : targetClassSet) {
-                try {
-                    MethodInterceptor methodInterceptor= AspectJAroundAdvice.class.newInstance();
-                    List<MethodInterceptor> list = new ArrayList<>();
-                    list.add(methodInterceptor);
-                    targetMap.put(targetClass,list);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
                 // 如果是切面代理，则使用Aspect注解类作为代理类
-//                Method[] methods = targetClass.getDeclaredMethods();
-//                for (Method method : methods) {
-//                    if (!method.isAnnotationPresent(Transactional.class)) {
-//                        List<MethodInterceptor> list = new ArrayList<>();
-//                        try {
-//                            list.add(AspectJAroundAdvice.class.newInstance());
-//                        } catch (Exception e) {
-//                            e.printStackTrace();
-//                        }
-//                        targetMap.put(targetClass, list);
-//                    } else {
-//                        // 如果是非切面代理，则使用默认代理类
-//                        try {
-//                            MethodInterceptor methodInterceptor = AspectJAroundAdvice.class.newInstance();
-//                            if (targetMap.containsKey(targetClass)) {
-//                                targetMap.get(targetClass).add(methodInterceptor);
-//                            } else {
-//                                List<MethodInterceptor> list = new ArrayList<>();
-//                                list.add(methodInterceptor);
-//                                targetMap.put(targetClass, list);
-//                            }
-//                        } catch (Exception e) {
-//                            e.printStackTrace();
-//                        }
+                Method[] methods = targetClass.getDeclaredMethods();
+                // 判断该类方法上是否有Transactional注解
+                for (Method method : methods) {
+                    // 如果是事务代理
+                    if (method.isAnnotationPresent(Transactional.class)) {
+                        if (targetMap.containsKey(targetClass)) {
+                            targetMap.get(targetClass).add(ReflectionUtils.newInstance(AspectJTransactionalAdvice.class));
+                            break;
+                        } else {
+                            List<Object> list = new ArrayList<>();
+                            list.add(ReflectionUtils.newInstance(AspectJTransactionalAdvice.class));
+                            targetMap.put(targetClass, list);
+                            break;
+                        }
+                    }
+                }
+                // 如果是非事务代理，则使用默认代理类
+                if (targetMap.containsKey(targetClass)) {
+                    continue;
+                } else {
+                    List<Object> list = new ArrayList<>();
+                    list.add(ReflectionUtils.newInstance(key));
+                    targetMap.put(targetClass, list);
+                }
             }
         }
         return targetMap;
@@ -150,14 +141,6 @@ public final class AopHelper {
                     list.add(methodInterceptor);
                     targetMap.put(targetClass, list);
                 }
-//                Object instance = key.newInstance();
-//                if (targetMap.containsKey(targetClass)) {
-//                    targetMap.get(targetClass).add(instance);
-//                } else {
-//                    List<Object> list = new ArrayList<>();
-//                    list.add(instance);
-//                    targetMap.put(targetClass, list);
-//                }
             }
         }
         return targetMap;

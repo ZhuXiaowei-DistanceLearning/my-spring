@@ -6,7 +6,14 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="smart4j-beans" />
+        <module name="smart4j-context" />
+        <module name="smart4j-aop" />
+        <module name="smart4j-core" />
         <module name="text-framework" />
+        <module name="smart4j-aspect" />
+        <module name="smart4j-webmvc" />
+        <module name="smart4j-web" />
       </profile>
     </annotationProcessing>
   </component>

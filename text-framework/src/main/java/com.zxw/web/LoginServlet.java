@@ -42,7 +42,6 @@ public class LoginServlet {
 
     public void register() {
         userService.register();
-        System.out.println("用户注册");
     }
 
 //	@Action("post:/login")
