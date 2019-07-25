@@ -2,7 +2,9 @@ package org.smart4j.framework.web.servlet;
 
 import org.smart4j.framework.context.ApplicationContext;
 import org.smart4j.framework.http.HttpMethod;
+import org.smart4j.framework.web.context.ConfigurableWebApplicationContext;
 import org.smart4j.framework.web.context.WebApplicationContext;
+import org.smart4j.framework.web.context.support.WebApplicationContextUtils;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -33,10 +35,17 @@ import java.security.Principal;
  * 从Spring 3.1开始，{ FrameworkServlet}现在可以注入Web应用程序上下文，而不是在内部创建自己的。
  * 这在Servlet 3.0+环境中很有用，它支持servlet实例的编程注册。有关详细信息，请参阅{ #FrameworkServlet（WebApplicationContext）} Javadoc。
  */
+
+/**
+ * 子类可以覆盖{ #initFrameworkServlet（）}以进行自定义初始化。
+ * 初始化WebApplicationContext
+ * 初始化FrameworkServlet
+ */
 public abstract class FrameworkServlet extends HttpServletBean {
     public static final String DEFAULT_NAMESPACE_SUFFIX = "-servlet";
 
     public static final String SERVLET_CONTEXT_PREFIX = FrameworkServlet.class.getName() + ".CONTEXT";
+
 
     private static final String INIT_PARAM_DELIMITERS = ",;\t\n";
 
@@ -48,15 +57,93 @@ public abstract class FrameworkServlet extends HttpServletBean {
     private String contextInitializerClasses;
     private WebApplicationContext webApplicationContext;
 
+    /**
+     * 用于检测是否已调用onRefresh的标志
+     */
+    private boolean refreshEventReceived = false;
+
     public FrameworkServlet() {
     }
 
+    /**
+     * 模板方法
+     *
+     * @throws ServletException
+     */
     protected void initFrameworkServlet() throws ServletException {
 
     }
 
     protected void onRefresh(ApplicationContext context) {
         // For subclasses: do nothing by default.
+    }
+
+    @Override
+    /**
+     * 该类的入口
+     */
+    protected void initServletBean() throws ServletException {
+        long startTime = System.currentTimeMillis();
+        try {
+            this.webApplicationContext = initWebApplicationContext();
+            initFrameworkServlet();
+        } catch (Exception e) {
+            System.out.println("初始化FrameworkServlet失败");
+            throw new RuntimeException();
+        }
+    }
+
+    /**
+     * 获取spring的根容器rootContext
+     * 设置WebApplicationContext 并根据情况调用onRefresh方法
+     * 将WebApplicationContext设置到ServletContext中
+     *
+     * @return
+     */
+    protected WebApplicationContext initWebApplicationContext() {
+        WebApplicationContext wac = null;
+        // 如果已经通过构造方法设置了webApplicationContext
+        WebApplicationContext rootContext = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+        if (this.webApplicationContext != null) {
+            wac = this.webApplicationContext;
+            if (wac instanceof ConfigurableWebApplicationContext) {
+                ConfigurableWebApplicationContext cwac = (ConfigurableWebApplicationContext) wac;
+                if (cwac.getParent() == null) {
+                    cwac.setParent(rootContext);
+                }
+            }
+        }
+        if (wac == null) {
+            // 当webApplicationContext已经存在ServletContext中时，通过配置在Servlet中的contextAttributes参数获取
+            wac = findWebApplicationContext();
+        }
+        if (wac == null) {
+            // 如果webApplicationContext还没有创建，则创建一个
+            createWebApplicationContext(wac);
+        }
+        return wac;
+    }
+
+    protected WebApplicationContext createWebApplicationContext(WebApplicationContext parent) {
+        return createWebApplicationContext(parent);
+    }
+
+    protected WebApplicationContext createWebApplicationContext(ApplicationContext parent) {
+        Class<?> contextClass = getContextClass();
+        return null;
+    }
+
+    protected WebApplicationContext findWebApplicationContext() {
+        String attrName = getContextAttribute();
+        if (attrName == null) {
+            return null;
+        }
+        WebApplicationContext wac =
+                WebApplicationContextUtils.getWebApplicationContext(getServletContext(), attrName);
+        if (wac == null) {
+            throw new IllegalStateException("找不到WebApplicationContext：无法注册");
+        }
+        return wac;
     }
 
     @Override
@@ -75,7 +162,12 @@ public abstract class FrameworkServlet extends HttpServletBean {
     }
 
     protected final void processRequest(HttpServletRequest request, HttpServletResponse response) {
-
+        long startTime = System.currentTimeMillis();
+        try {
+            doService(request,response);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -114,6 +206,10 @@ public abstract class FrameworkServlet extends HttpServletBean {
 
     public String getContextAttribute() {
         return contextAttribute;
+    }
+
+    public Class<?> getContextClass() {
+        return null;
     }
 
     public void setContextAttribute(String contextAttribute) {
@@ -167,4 +263,5 @@ public abstract class FrameworkServlet extends HttpServletBean {
 
     protected abstract void doService(HttpServletRequest request, HttpServletResponse response)
             throws Exception;
+
 }

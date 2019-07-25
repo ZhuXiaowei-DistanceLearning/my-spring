@@ -39,14 +39,16 @@ package org.smart4j.framework.web.servlet;
  */
 
 import com.sun.istack.internal.Nullable;
+import org.omg.PortableServer.REQUEST_PROCESSING_POLICY_ID;
 import org.smart4j.framework.context.ApplicationContext;
+import org.smart4j.framework.utils.ClassUtils;
 import org.smart4j.framework.utils.PropsUtils;
 import org.smart4j.framework.web.context.WebApplicationContext;
+import org.smart4j.framework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * HandlerMapping 可以被覆盖,控制请求路由
@@ -55,41 +57,61 @@ import java.util.Properties;
  */
 public class DispatcherServlet extends FrameworkServlet {
     /**
-     * Well-known name for the MultipartResolver object in the bean factory for this namespace.
+     * 此命名空间的Bean工厂中的MultipartResolver对象的已知名称。
      */
     private static final String MULTIPART_RESOLVER_BEAN_NAME = "multipartResolver";
     /**
-     * Well-known name for the ThemeResolver object in the bean factory for this namespace.
+     * Bean命名空间中此处理器映射器命名空间的HandlerMapping对象的已知名称。
      */
     private static final String HANDLER_MAPPING_BEAN_NAME = "handlerMapping";
     /**
-     * Well-known name for the HandlerAdapter object in the bean factory for this namespace.
-     * Only used when "detectAllHandlerAdapters" is turned off.
+     * Bean命名空间中此HandspaceAdapter对象的已知名称。
+     * 仅在“detectAllHandlerAdapters”关闭时使用。
      * #setDetectAllHandlerAdapters
      */
     public static final String HANDLER_ADAPTER_BEAN_NAME = "handlerAdapter";
     /**
-     * Well-known name for the ViewResolver object in the bean factory for this namespace.
-     * Only used when "detectAllViewResolvers" is turned off.
+     * Bean命名空间中此命名空间的RequestToViewNameTranslator对象的已知名称。
+     */
+    public static final String REQUEST_TO_VIEW_NAME_TRANSLATOR_BEAN_NAME = "viewNameTranslator";
+
+    /**
+     * bean命名空间中此ViewHesolver对象的已知名称。仅在“detectAllViewResolvers”关闭时使用
      * <p>
      * #setDetectAllViewResolvers
      */
     private static final String VIEW_RESOLVER_BEAN_NAME = "viewResolver";
     /**
-     * Request attribute to hold the current web application context.
-     * Otherwise only the global web app context is obtainable by tags etc.
-     * org.springframework.web.servlet.support.RequestContextUtils#findWebApplicationContext
+     * 请求属性以保存当前Web应用程序上下文。
+     * 否则，只有标签等可以获得全局Web应用程序上下文
+     * org.springframework.web.servlet.support.RequestContextUtils＃findWebApplicationContext
      */
     public static final String WEB_APPLICATION_CONTEXT_ATTRIBUTE = DispatcherServlet.class.getName() + ".CONTEXT";
     /**
-     * Name of the class path resource (relative to the DispatcherServlet class)
-     * that defines DispatcherServlet's default strategy names.
+     * 类路径资源的名称（相对于DispatcherServlet类），它定义DispatcherServlet的默认策略名称。
      */
     private static final String DEFAULT_STRATEGIES_PATH = "DispatcherServlet.properties";
     /**
-     * Common prefix that DispatcherServlet's default strategy attributes start with.
+     * DispatcherServlet's 的默认策略属性的常用前缀
      */
-    private static final String DEFAULT_STRATEGIES_PREFIX = "org.springframework.web.servlet";
+    private static final String DEFAULT_STRATEGIES_PREFIX = "org.smart4j.framework.web.servlet";
+
+
+    /**
+     * Detect all HandlerMappings or just expect "handlerMapping" bean?
+     * 检测所有处理器映射器
+     * 或者只是期望处理器映射器对象
+     */
+    private boolean detectAllHandlerMappings = true;
+
+    /**
+     * Detect all HandlerAdapters or just expect "handlerAdapter" bean?
+     */
+    private boolean detectAllHandlerAdapters = true;
+    /**
+     * Detect all ViewResolvers or just expect "viewResolver" bean?
+     */
+    private boolean detectAllViewResolvers = true;
 
     /**
      * Should we dispatch an HTTP OPTIONS request to { #doService}?
@@ -98,18 +120,22 @@ public class DispatcherServlet extends FrameworkServlet {
     private boolean dispatchOptionsRequest = false;
     private static final Properties defaultStrategies;
     /**
-     * List of HandlerMappings used by this servlet
+     * 此servlet使用的HandlerMapping列表
      */
     private List<HandlerMapping> handlerMappings;
 
     /**
-     * List of HandlerAdapters used by this servlet
+     * 此servlet使用的HandlerAdapter列表
      */
     private List<HandlerAdapter> handlerAdapters;
     /**
-     * RequestToViewNameTranslator used by this servlet
+     * 此servlet使用的RequestToViewNameTranslator
      */
     private RequestToViewNameTranslator viewNameTranslator;
+    /**
+     * 在包含请求后执行请求属性的清理？
+     */
+    private boolean cleanupAfterInclude = true;
     private List<ViewResolver> viewResolvers;
 
     static {
@@ -121,45 +147,280 @@ public class DispatcherServlet extends FrameworkServlet {
         setDispatchOptionsRequest(true);
     }
 
+    /**
+     * 责任链模式，由具体传入的webApplicationContext实现类去执行
+     *
+     * @param webApplicationContext
+     */
     public DispatcherServlet(WebApplicationContext webApplicationContext) {
         super(webApplicationContext);
         setDispatchOptionsRequest(true);
     }
 
     @Override
+    /**
+     * 将DispatcherServlet特定的请求属性和委托公开给{@link #doDispatch} 进行实际调度
+     */
     protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        //在包含的情况下保留请求属性的快照，
+        //能够在include之后恢复原始属性。
+        Map<String, Object> attributesSnapshot = null;
+        attributesSnapshot = new HashMap<>();
+        Enumeration<?> parameterNames = request.getAttributeNames();
+        while (parameterNames.hasMoreElements()) {
+            String attrName = (String) parameterNames.nextElement();
+            // 在包含请求后执行请求属性的清理 或者 该属性的开始名称以默认策略前缀为开始时
+            if (this.cleanupAfterInclude || attrName.startsWith(DEFAULT_STRATEGIES_PREFIX)) {
+                attributesSnapshot.put(attrName, request.getAttribute(attrName));
+            }
+        }
+        //使框架对象可供处理程序和视图对象使用。
+        request.setAttribute(WEB_APPLICATION_CONTEXT_ATTRIBUTE, getWebApplicationContext());
+        try {
+            doDispatch(request, response);
+        } finally {
 
+        }
+    }
+
+    /**
+     * 处理对处理程序的实际调度。
+     * 将通过按顺序应用servlet的HandlerMappings来获取处理程序。
+     * HandlerAdapter将通过查询servlet安装的HandlerAdapter来获得，以找到支持处理程序类的第一个。
+     * 所有HTTP方法都由此方法处理。 由HandlerAdapters或处理程序自行决定哪些方法可以接受。
+     *
+     * @param request
+     * @param response
+     * @throws Exception
+     */
+    protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        // 处理请求
+        HttpServletRequest processedRequest = request;
+        // 代理链
+        HandlerExecutionChain mappedHandler = null;
+        // 是否为multipart请求
+        boolean multipartRequestParsed = false;
+        // 数据模型
+        ModelAndView mv = null;
+        Exception dispatchException = null;
+        try {
+            // 确认当前处理请求
+            // 根据配置或注解找到最终要指定的Handler，返回Handler
+            mappedHandler = getHandler(request);
+            if (mappedHandler == null) {
+                return;
+            }
+            // 请求HandlerAdapter执行Handler，根据Handler规则执行不同类型的HandlerAdapter
+            HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
+            String method = request.getMethod();
+
+            boolean isGet = "GET".equals(method);
+            if (isGet || "HEAD".equals(method)) {
+                long lastModified = ha.getLastModified(request, mappedHandler.getHandler());
+                // 判断如果没有可用的处理器，则直接返回
+            }
+            if (!mappedHandler.applyPreHandle(processedRequest, response)) {
+                return;
+            }
+            // Handler执行完毕，返回一个ModelAndView
+            mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
+            // 视图名称翻译
+            applyDefaultViewName(processedRequest, mv);
+            // 应用注册拦截器的postHandle方法。
+            mappedHandler.applyPostHandle(processedRequest, response, mv);
+        } catch (Exception e) {
+
+        } finally {
+            // 而不是postHandle和afterCompletion
+
+            //清理文件请求使用的任何资源。
+        }
+    }
+
+    private void applyDefaultViewName(HttpServletRequest processedRequest, ModelAndView mv) throws Exception {
+        if (mv != null && !mv.hasView()) {
+            getDefaultViewName(processedRequest);
+        }
+    }
+
+    protected String getDefaultViewName(HttpServletRequest request) throws Exception {
+        return (this.viewNameTranslator != null ? this.viewNameTranslator.getViewName(request) : null);
+    }
+
+    /**
+     * 返回此请求的HandlerExecutionChain。按顺序处理所有处理程序映射。
+     *
+     * @param request 请求当前HTTP请求@return HandlerExecutionChain
+     * @return
+     * @throws Exception
+     */
+    protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
+        if (this.handlerMappings != null) {
+            for (HandlerMapping hm : handlerMappings) {
+                HandlerExecutionChain chain = hm.getHandler(request);
+                if (chain != null) {
+                    return chain;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 返回此处理程序对象的HandlerAdapter。
+     *
+     * @param handler 处理程序对象以找到适配器
+     * @return
+     */
+    protected HandlerAdapter getHandlerAdapter(Object handler) {
+        if (this.handlerAdapters != null) {
+            for (HandlerAdapter ha : handlerAdapters) {
+                if (ha.support(handler)) {
+                    return ha;
+                }
+            }
+        }
+        throw new RuntimeException();
     }
 
     protected void initStrategies(ApplicationContext context) {
-        initMultipartResolver(context);
+//        initMultipartResolver(context);
 //        initLocaleResolver(context);
 //        initThemeResolver(context);
+        // 初始化处理器映射器
         initHandlerMappings(context);
+        // 初始化处理器适配器
         initHandlerAdapters(context);
 //        initHandlerExceptionResolvers(context);
+
         initRequestToViewNameTranslator(context);
+        // 初始化视图解析器
         initViewResolvers(context);
 //        initFlashMapManager(context);
     }
 
-    private void initViewResolvers(ApplicationContext context) {
-    }
-
-    private void initRequestToViewNameTranslator(ApplicationContext context) {
-    }
-
-    private void initHandlerAdapters(ApplicationContext context) {
+    @Override
+    protected void onRefresh(ApplicationContext context) {
+        initStrategies(context);
     }
 
     private void initHandlerMappings(ApplicationContext context) {
+        // 初始化处理器映射器
+        this.handlerMappings = null;
+        if (this.detectAllHandlerMappings) {
+            Map<String, HandlerMapping> matchingBeans = new HashMap<>();
+            // 如果不为空
+            if (!matchingBeans.isEmpty()) {
+                // 初始化
+                this.handlerMappings = new ArrayList<>();
+                // 进行排序
+            }
+        } else {
+            HandlerMapping hm = context.getBean(HANDLER_MAPPING_BEAN_NAME, HandlerMapping.class);
+            this.handlerMappings = Collections.singletonList(hm);
+//            this.handlerMappings.sort(this.handlerMappings);
+        }
+
+        // 如果找不到自定义处理器映射器，则使用默认的处理器映射器
+        if (this.handlerMappings == null) {
+            this.handlerMappings = getDefaultStrategies(context, HandlerMapping.class);
+        }
+
+    }
+
+    private void initRequestToViewNameTranslator(ApplicationContext context) {
+        try {
+            this.viewNameTranslator = context.getBean(REQUEST_TO_VIEW_NAME_TRANSLATOR_BEAN_NAME, RequestToViewNameTranslator.class);
+        } catch (Exception e) {
+            this.viewNameTranslator = getDefaultStrategy(context, RequestToViewNameTranslator.class);
+        }
+    }
+
+    private void initHandlerAdapters(ApplicationContext context) {
+        // 初始化处理器映射器
+        this.handlerMappings = null;
+        if (this.detectAllHandlerAdapters) {
+            Map<String, HandlerAdapter> matchingBeans = new HashMap<>();
+            // 如果不为空
+            if (!matchingBeans.isEmpty()) {
+                // 初始化
+                this.handlerAdapters = new ArrayList<>();
+                // 进行排序
+            }
+        } else {
+            HandlerAdapter hm = context.getBean(HANDLER_ADAPTER_BEAN_NAME, HandlerAdapter.class);
+            this.handlerAdapters = Collections.singletonList(hm);
+//            this.handlerMappings.sort(this.handlerMappings);
+        }
+
+        // 如果找不到自定义处理器映射器，则使用默认的处理器映射器
+        if (this.handlerAdapters == null) {
+            this.handlerAdapters = getDefaultStrategies(context, HandlerAdapter.class);
+        }
+    }
+
+    private void initViewResolvers(ApplicationContext context) {
+        this.viewResolvers = null;
+        if (this.detectAllViewResolvers) {
+            Map<String, ViewResolver> matchingBeans = new HashMap<>();
+            // 如果不为空
+            if (!matchingBeans.isEmpty()) {
+                // 初始化
+                this.handlerMappings = new ArrayList<>();
+                // 进行排序
+            }
+        } else {
+            ViewResolver hm = context.getBean(VIEW_RESOLVER_BEAN_NAME, ViewResolver.class);
+            this.viewResolvers = Collections.singletonList(hm);
+//            this.handlerMappings.sort(this.handlerMappings);
+        }
+
+        // 如果找不到自定义处理器映射器，则使用默认的处理器映射器
+        if (this.viewResolvers == null) {
+            this.viewResolvers = getDefaultStrategies(context, ViewResolver.class);
+        }
     }
 
     private void initMultipartResolver(ApplicationContext context) {
     }
 
+    protected <T> T getDefaultStrategy(ApplicationContext context, Class<T> strategyInterface) {
+        List<T> strategies = getDefaultStrategies(context, strategyInterface);
+        if (strategies.size() == 1) {
+            return strategies.get(0);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("uncheck")
+    protected <T> List<T> getDefaultStrategies(ApplicationContext context, Class<T> strategyInterface) {
+        String name = strategyInterface.getName();
+        String value = defaultStrategies.getProperty(name);
+        List<T> strategies = new ArrayList<>();
+        if (value != null) {
+
+        } else {
+            //
+            Class loadClass = ClassUtils.loadClass("org.smart4j.framework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter", false);
+            strategies.add((T) loadClass);
+        }
+        return strategies;
+    }
+
+
     public void setDispatchOptionsRequest(boolean dispatchOptionsRequest) {
         this.dispatchOptionsRequest = dispatchOptionsRequest;
     }
 
+    public void setDetectAllHandlerMappings(boolean detectAllHandlerMappings) {
+        this.detectAllHandlerMappings = detectAllHandlerMappings;
+    }
+
+    public void setDetectAllHandlerAdapters(boolean detectAllHandlerAdapters) {
+        this.detectAllHandlerAdapters = detectAllHandlerAdapters;
+    }
+
+    public void setDetectAllViewResolvers(boolean detectAllViewResolvers) {
+        this.detectAllViewResolvers = detectAllViewResolvers;
+    }
 }
