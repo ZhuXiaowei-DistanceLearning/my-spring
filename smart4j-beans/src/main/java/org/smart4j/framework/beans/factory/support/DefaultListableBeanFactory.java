@@ -2,13 +2,13 @@ package org.smart4j.framework.beans.factory.support;
 
 import org.aopalliance.interceptor.MethodInterceptor;
 import org.smart4j.framework.aop.aspect.ProxyManager;
+import org.smart4j.framework.aop.utils.AopHelper;
 import org.smart4j.framework.beans.factory.BeanFactory;
 import org.smart4j.framework.beans.factory.annotation.Autowire;
 import org.smart4j.framework.beans.factory.config.BeanDefinition;
 import org.smart4j.framework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.smart4j.framework.context.annotation.Bean;
 import org.smart4j.framework.context.annotation.Configuration;
-import org.smart4j.framework.helper.AopHelper;
 import org.smart4j.framework.helper.ClassHelper;
 import org.smart4j.framework.stereotype.Component;
 import org.smart4j.framework.utils.ReflectionUtils;

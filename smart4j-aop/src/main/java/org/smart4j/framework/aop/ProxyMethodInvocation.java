@@ -1,5 +1,6 @@
 package org.smart4j.framework.aop;
 
+
 import org.aopalliance.interceptor.MethodInvocation;
 
 public interface ProxyMethodInvocation extends MethodInvocation {

@@ -24,6 +24,7 @@ public abstract class HttpServletBean extends HttpServlet {
     }
 
     protected void initServletBean() throws ServletException {
+
     }
 
     @Override

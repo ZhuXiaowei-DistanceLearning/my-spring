@@ -1,6 +1,6 @@
-package org.smart4j.framework.core.helper;
+package org.smart4j.framework.aop.utils;
 
-import org.smart4j.framework.constant.ConfigConstant;
+import org.smart4j.framework.core.constant.ConfigConstant;
 import org.smart4j.framework.utils.DBUtil;
 import org.smart4j.framework.utils.Logger;
 import org.smart4j.framework.utils.PropsUtils;

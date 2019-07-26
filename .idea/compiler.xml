@@ -6,15 +6,17 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="smart4j-beans" />
-        <module name="smart4j-context" />
-        <module name="smart4j-aop" />
-        <module name="smart4j-core" />
         <module name="text-framework" />
-        <module name="smart4j-aspect" />
-        <module name="smart4j-webmvc" />
-        <module name="smart4j-web" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="smart4j-aop" target="1.8" />
+      <module name="smart4j-aspect" target="1.8" />
+      <module name="smart4j-beans" target="1.8" />
+      <module name="smart4j-context" target="1.8" />
+      <module name="smart4j-core" target="1.8" />
+      <module name="smart4j-web" target="1.8" />
+      <module name="smart4j-webmvc" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
 </project>

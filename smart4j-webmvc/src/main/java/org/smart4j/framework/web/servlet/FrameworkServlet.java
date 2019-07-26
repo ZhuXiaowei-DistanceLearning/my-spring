@@ -87,6 +87,7 @@ public abstract class FrameworkServlet extends HttpServletBean {
         try {
             this.webApplicationContext = initWebApplicationContext();
             initFrameworkServlet();
+            onRefresh(this.webApplicationContext);
         } catch (Exception e) {
             System.out.println("初始化FrameworkServlet失败");
             throw new RuntimeException();
@@ -164,7 +165,7 @@ public abstract class FrameworkServlet extends HttpServletBean {
     protected final void processRequest(HttpServletRequest request, HttpServletResponse response) {
         long startTime = System.currentTimeMillis();
         try {
-            doService(request,response);
+            doService(request, response);
         } catch (Exception e) {
             e.printStackTrace();
         }

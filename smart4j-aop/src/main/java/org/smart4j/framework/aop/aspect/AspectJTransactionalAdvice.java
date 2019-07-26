@@ -2,7 +2,7 @@ package org.smart4j.framework.aop.aspect;
 
 import org.aopalliance.interceptor.MethodInterceptor;
 import org.aopalliance.interceptor.MethodInvocation;
-import org.smart4j.framework.helper.DataBaseHelper;
+import org.smart4j.framework.aop.utils.DataBaseHelper;
 
 public class AspectJTransactionalAdvice extends AbstractAspectJAdvice implements MethodInterceptor {
     @Override

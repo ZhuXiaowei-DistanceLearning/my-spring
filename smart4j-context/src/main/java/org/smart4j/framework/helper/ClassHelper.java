@@ -1,7 +1,8 @@
-package org.smart4j.framework.core.helper;
+package org.smart4j.framework.helper;
 
 import org.smart4j.framework.context.annotation.Bean;
 import org.smart4j.framework.context.annotation.Configuration;
+import org.smart4j.framework.core.helper.ConfigHelper;
 import org.smart4j.framework.stereotype.Component;
 import org.smart4j.framework.stereotype.Service;
 import org.smart4j.framework.utils.ClassUtils;

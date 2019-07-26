@@ -29,7 +29,6 @@ import com.zxw.util.Logger;
 import com.zxw.vo.MenuList;
 import com.zxw.vo.menuDB;
 import org.smart4j.framework.beans.factory.annotation.Autowire;
-import org.smart4j.framework.beans.factory.support.DefaultListableBeanFactory;
 import org.smart4j.framework.stereotype.Controller;
 
 @Controller
