@@ -1,8 +1,10 @@
 package org.smart4j.framework.helper;
 
+import com.sun.org.apache.bcel.internal.generic.RETURN;
 import org.smart4j.framework.context.annotation.Bean;
 import org.smart4j.framework.context.annotation.Configuration;
 import org.smart4j.framework.stereotype.Component;
+import org.smart4j.framework.stereotype.Controller;
 import org.smart4j.framework.stereotype.Service;
 import org.smart4j.framework.utils.ClassUtils;
 import org.smart4j.framework.utils.Logger;
@@ -143,6 +145,16 @@ public final class ClassHelper {
         for (Class<?> aClass : SCAN_CLASS_SET) {
             if (aClass.isAnnotationPresent(Service.class)) {
                 classSet.add(aClass);
+            }
+        }
+        return classSet;
+    }
+
+    public static Set<Class<?>> getClassSetByController(){
+        Set<Class<?>> classSet = new HashSet<>();
+        for (Class<?> cls : SCAN_CLASS_SET) {
+            if(cls.isAnnotationPresent(Controller.class)){
+                classSet.add(cls);
             }
         }
         return classSet;

@@ -7,7 +7,7 @@ import javax.servlet.http.HttpServletRequest;
  * 定位控制器响应方法
  */
 public interface HandlerMapping {
-    HandlerExecutionChain getHandler(HttpServletRequest request);
+    HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception;
 
     String PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE = HandlerMapping.class.getName() + ".pathWithinHandlerMapping";
     String BEST_MATCHING_PATTERN_ATTRIBUTE = HandlerMapping.class.getName() + ".bestMatchingPattern";

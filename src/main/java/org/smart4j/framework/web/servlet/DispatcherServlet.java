@@ -41,6 +41,7 @@ package org.smart4j.framework.web.servlet;
 import org.smart4j.framework.context.ApplicationContext;
 import org.smart4j.framework.utils.ClassUtils;
 import org.smart4j.framework.utils.PropsUtils;
+import org.smart4j.framework.utils.ReflectionUtils;
 import org.smart4j.framework.web.context.WebApplicationContext;
 import org.smart4j.framework.web.servlet.view.BeanNameViewResolver;
 import org.smart4j.framework.web.servlet.view.DefaultRequestToViewNameTranslator;
@@ -292,7 +293,8 @@ public class DispatcherServlet extends FrameworkServlet {
         // 初始化处理器适配器
         initHandlerAdapters(context);
 //        initHandlerExceptionResolvers(context);
-
+        // 初始化请求视图名称转化器
+        // 将当前请求转化为视图名称
         initRequestToViewNameTranslator(context);
         // 初始化视图解析器
         initViewResolvers(context);
@@ -318,7 +320,6 @@ public class DispatcherServlet extends FrameworkServlet {
         } else {
             HandlerMapping hm = context.getBean(HANDLER_MAPPING_BEAN_NAME, HandlerMapping.class);
             this.handlerMappings = Collections.singletonList(hm);
-//            this.handlerMappings.sort(this.handlerMappings);
         }
 
         // 如果找不到自定义处理器映射器，则使用默认的处理器映射器
@@ -332,15 +333,17 @@ public class DispatcherServlet extends FrameworkServlet {
         try {
             this.viewNameTranslator = context.getBean(REQUEST_TO_VIEW_NAME_TRANSLATOR_BEAN_NAME, DefaultRequestToViewNameTranslator.class);
             if (viewNameTranslator == null) {
+                RequestToViewNameTranslator a = new DefaultRequestToViewNameTranslator();
                 this.viewNameTranslator = getDefaultStrategy(context, RequestToViewNameTranslator.class);
             }
         } catch (Exception e) {
+            System.out.println(e.toString());
         }
     }
 
     private void initHandlerAdapters(ApplicationContext context) {
         // 初始化处理器映射器
-        this.handlerMappings = null;
+        this.handlerAdapters = null;
         if (this.detectAllHandlerAdapters) {
             Map<String, HandlerAdapter> matchingBeans = new HashMap<>();
             // 如果不为空
@@ -388,7 +391,8 @@ public class DispatcherServlet extends FrameworkServlet {
     protected <T> T getDefaultStrategy(ApplicationContext context, Class<T> strategyInterface) {
         List<T> strategies = getDefaultStrategies(context, strategyInterface);
         if (strategies.size() == 1) {
-            return strategies.get(0);
+            T t = strategies.get(0);
+            return t;
         }
         return null;
     }
@@ -396,16 +400,16 @@ public class DispatcherServlet extends FrameworkServlet {
     @SuppressWarnings("uncheck")
     protected <T> List<T> getDefaultStrategies(ApplicationContext context, Class<T> strategyInterface) {
         String name = strategyInterface.getName();
-        int i = name.lastIndexOf(".");
+        int i = name.lastIndexOf(".") + 1;
+        // className
         String substring = name.substring(i);
-        String value = defaultStrategies.getProperty(name);
+        String value = defaultStrategies.getProperty(substring);
         List<T> strategies = new ArrayList<>();
         if (1 == 2) {
 
         } else {
-            //
-            Class loadClass = ClassUtils.loadClass(name, false);
-            strategies.add((T) loadClass);
+            Class loadClass = ClassUtils.loadClass(value, false);
+            strategies.add((T) ReflectionUtils.newInstance(loadClass));
         }
         return strategies;
     }

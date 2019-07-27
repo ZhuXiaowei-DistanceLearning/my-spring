@@ -5,9 +5,6 @@ import org.smart4j.framework.web.servlet.handler.AbstractHandlerMethodMapping;
 
 import javax.servlet.http.HttpServletRequest;
 
-public class RequestMappingInfoHandlerMapping extends AbstractHandlerMethodMapping {
-    @Override
-    public HandlerExecutionChain getHandler(HttpServletRequest request) {
-        return null;
-    }
+public class RequestMappingInfoHandlerMapping extends AbstractHandlerMethodMapping<RequestMappingInfoHandlerMapping> {
+
 }

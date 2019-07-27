@@ -30,6 +30,8 @@ import com.zxw.vo.MenuList;
 import com.zxw.vo.menuDB;
 import org.smart4j.framework.beans.factory.annotation.Autowire;
 import org.smart4j.framework.stereotype.Controller;
+import org.smart4j.framework.web.bind.annotation.GetMapping;
+import org.smart4j.framework.web.bind.annotation.PostMapping;
 
 @Controller
 public class LoginServlet {
@@ -39,9 +41,16 @@ public class LoginServlet {
     @Autowire
     private UserService userService;
 
+    @PostMapping("/login")
     public void register() {
         userService.register();
     }
+
+    @GetMapping("/findAll")
+    public List<User> findAll(){
+        return null;
+    }
+
 
 //	@Action("post:/login")
 //	public Data login(Param param) {
